@@ -266,6 +266,10 @@ write(toJSON(nodes),file='./nodes.json')
 circle, line{   cursor: pointer;
  }
 
+ line.hide{
+  opacity: 0.2;
+ }
+
  circle.selected{
   fill:orange;
  }
@@ -327,12 +331,10 @@ circle, line{   cursor: pointer;
             .append("line")
             .attr('class', function(d){
              var ret;
-             // console.log(d.source)
              if( d.source == 1 ){ ret = 'origin linkedLine'}
               else{ ret = 'linkedLine'; }
              return ret;
            })
-            // .attr(;)
             .attr('stroke-width',function(d){ 
                 if(d.value>=34328 ){return 0;}
                 else if(d.value < 34328 && d.source == 1){ return d.value/1000 }
@@ -342,17 +344,55 @@ circle, line{   cursor: pointer;
             })
 
        
-
+            var clicked = false
         var node = svg.append("g")
             .attr("class", "nodes")
             .selectAll("circle")
             .data(data.nodes)
             .enter().append("circle")
            .attr('r',2)
-            // .attr('fill', function(d){ return getColorMatch(d.group) })
-            // .attr("r", function(d){  if(d.group==-1){ return 1;}else{ return sizeScale(d.size) } })
             .on('mouseover', function(d){
-                d3.select('#name').html(d.name)
+              if( clicked == false){
+              d3.select('#name').html(d.name)
+              d3.selectAll('.links line').filter(function(f){
+               if( f.source.name!==d.name &&  f.target.name !== d.name ){
+                return true;
+               }else{
+                return false;
+               }
+              }).classed('hide',true)
+              
+             d3.selectAll('.links line:not(.hide)')
+              .attr('stroke-width',1);
+             }
+            })
+            .on('mousedown', function(d){
+              if( clicked == false){  clicked = true;
+              d3.select('#name').html(d.name)
+              d3.selectAll('.links line').filter(function(f){
+               if( f.source.name!==d.name &&  f.target.name !== d.name ){
+                return true;
+               }else{
+                return false;
+               }
+              }).classed('hide',true)
+              
+             d3.selectAll('.links line:not(.hide)')
+              .attr('stroke-width',1)
+              }else{
+                clicked = false;
+ d3.selectAll('.links line').classed('hide',false)
+              }
+            })
+            .on('mouseout',function(f){
+              if( clicked == false){
+              d3.selectAll('.links line').attr('stroke-width',function(d){ 
+               if(d.value>=34328 ){ return 0; }
+               else if(d.value < 34328 && d.source.index == 1){ return d.value/1000 }
+               else{  return d.value/100; } })
+
+               d3.selectAll('.links line').classed('hide',false)
+              }
             })
 
         node.filter(function(d){ return d.name ==='0x60c8daca7fca2272f58ecf1928765c8d7f4baf0f';}).attr('r',4).classed('selected',true)
@@ -382,24 +422,7 @@ circle, line{   cursor: pointer;
             .links(data.links2);    
        
        }
-        
-        // function dragstarted(d) {
-        //     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-        //     d.fx = d.x;
-        //     d.fy = d.y;
-        // }
-        
-        // function dragged(d) {
-        //     d.fx = d3.event.x;
-        //     d.fy = d3.event.y;
-        // }
-        
-        // function dragended(d) {
-        //     if (!d3.event.active) simulation.alphaTarget(0);
-        //     d.fx = null;
-        //     d.fy = null;
-        // } 
-                
+    
     }())
     
 </script>
