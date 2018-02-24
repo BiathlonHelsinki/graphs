@@ -1,8 +1,9 @@
 
 var margin = {top: 120, right: 100, bottom: 100, left: 100};
+var offset = 150;
 
 var width = $(window).width() -margin.left - margin.right - 30,
-    height =  $(window).height() - 2*margin.top - 2*margin.bottom - 20;
+    height =  $(window).height() - 2*margin.top - margin.bottom - 20;
 
 var svg;
 var data;
@@ -12,10 +13,12 @@ var scaleX = d3.scaleLinear().range([0, width])
 var scaleX_size = d3.scaleLog().range([0, width])
 // var scaleRadius = d3.scaleLinear().range([1, 10])
 var scaleY = d3.scaleLinear().range([0, height])
-var axis =  d3.axisTop();
+var axis =  d3.axisTop().tickSize(-height);
+
 
 // 2016-10-19 08:42:17
 var parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+var position_map = {};
 
 $(document).ready(function(){
 
@@ -73,22 +76,33 @@ function makeVis(){
   svg.append('g').attr('class',"axis")
       .call(axis)
 
-  // svg.selectAll('.proposals')
-  //       .data(data, function(d){ return d.id }).enter()
-  //       .append('circle').attr('class','proposals')
-  //       .attr('cx', function(d){ return ("scheduled" in d && d['stopped.x'] != 't') ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.proposal_created_at)) ; })
-  //       .attr('cy', function(d,i){ return (i%5)*15 })
-  //       .attr('r', function(d){ return d.recurrence + 1; })
-  //       .style('fill', function(d){ return ("scheduled" in d ) ? '#000':'rgba(0,0,0,0)' ; }) //'rgba(0,0,0,0)'
-  //       .style('stroke-width','1')
-  //       .style('stroke', '#000');
+  // Check how many 4 month periods we have:
+  // ff_dd = (scaleX.domain()[1] - scaleX.domain()[0])/4
+  background = svg.append('g').attr('class',"axis_background");
+  current = scaleX.domain()[0];
+  tick = 0;
+  while( current < scaleX.domain()[1] ){
+    background.append('rect')
+      .attr('x', scaleX(current))
+      .attr('y',0)
+      .attr('width', scaleX(current) -  scaleX(d3.timeMonth.offset(current,-3)) )
+      .attr('height', height)
+      .style('fill', function(d){ return (tick%2 == 0) ? '#fafafa':'#fff'; })
 
+      current = d3.timeMonth.offset(current,3)
+      tick++;
+  }   
+  
   props = svg.selectAll('.proposals')
         .data(data, function(d){  if(!("scheduled" in d) || d['stopped.x'] == 't' ){ return d.id } }).enter()
         .append('circle').attr('class','proposals')
         .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
-        .attr('cy', function(d,i){ return (i%1)*15  })
-        .attr('r', function(d){ return d.recurrence + 1; })
+        .attr('cy', function(d,i){
+          // Fill-in an index array of the top or bottom position of each proposal
+          position_map[d.id+""] = (i%4);
+          return (i%4)*15 + offset;
+         })
+        .attr('r', function(d){ return 2; })
         .style('fill', function(d){ return 'rgba(0,0,0,0)' ; })
         .style('stroke-width','1')
         .style('stroke', '#000');
@@ -97,8 +111,17 @@ function makeVis(){
         .data(data_ext['events_data']).enter()
         .append('circle').attr('class','evnts')
         .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
-        .attr('cy', function(d,i){ return (i%5)*15 + 30; })
-        .attr('r', function(d){ return 3; })
+        .attr('cy', function(d,i){ 
+          // For clarity of view find the direction the node should be
+          console.log(position_map[d.proposal_id])
+          if( position_map[d.proposal_id] < 2 ){
+            return (i%4)*15  ; 
+          }else{
+            return (i%4)*15 + 2*offset + 30 ;             
+          }
+          // return (i%5)*15 + 30; 
+        })
+        .attr('r', function(d){ return 2; })
         .style('fill', function(d){ return '#000'; })
         .style('stroke-width','1')
         .style('stroke', '#000');
@@ -106,6 +129,25 @@ function makeVis(){
    pledgesContainer = svg.append('g').attr('class','pledges');
    pledges_to_proposals = data_ext['pledges'].filter(function(d){ return  !('deleted_at' in d) && ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;})
   
+   pledgesContainer.selectAll('.pledge')
+      .data(pledges_to_proposals, function(d){ return d.id})
+        .enter().append('circle')
+        .attr('class','pledge')
+        // .attr('cx', function(d){ return scaleX_size((d.pledge)); }) 
+        .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
+        .attr('cy', function(d,i){
+          // Fill-in an index array of the top or bottom position of each proposal
+          if( d.item_type == 'Proposal' && position_map[d.item_id+""] < 2 ){ 
+            return offset - (i%4)*15 - 30 ; 
+           }else{
+            return (i%4)*15 + offset + 90;
+           }
+        })
+        .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
+        .style('fill','red')
+
+
+
    pledgesContainer.selectAll('line')
         .data(pledges_to_proposals).enter().append('line')
         .attr('x1', function (d) {
@@ -119,30 +161,25 @@ function makeVis(){
           return d3.select(gg).attr('cx');    
         })
         .attr('y1', function (d) {
-           var gg = null; 
+          var gg = null; 
           if(d.item_type =='Proposal' ){ 
             d3.selectAll('.proposals').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
           }
           else{ 
             d3.selectAll('.evnts').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
           }
-
           return d3.select(gg).attr('cy');
         })
         .attr('x2',function(d){ return scaleX( parseDate(d.created_at) ); }) 
         // .attr('x2',function(d){ return scaleX_size(d.pledge); }) 
-        .attr('y2', function(d,i){ return (i%8)*15 + 300})
+        .attr('y2', function(d,i){ 
+          if( position_map[d.item_id] < 2 ){
+            return offset - (i%4)*15 - 30 ; 
+          }else{
+            return (i%4)*15 + offset + 90;
+          }
+        })
         .style('stroke','rgba(150,150,150,0.02')
-
-   pledgesContainer.selectAll('.pledge')
-      .data(pledges_to_proposals, function(d){ return d.id})
-        .enter().append('circle')
-        .attr('class','pledge')
-        // .attr('cx', function(d){ return scaleX_size((d.pledge)); }) 
-        .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
-        .attr('cy', function(d,i){ return (i%8)*15 + 300})
-        .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
-        .style('fill','red')
 
 
    activitiesContainer = svg.append('g').attr('class','activities');

@@ -34,7 +34,6 @@ svg{
   cursor: pointer;
 }
 
-
 .legend .labels{
 	font-family: sans-serif;
 	letter-spacing: 0.3px;
@@ -42,19 +41,4 @@ svg{
 
 .legend .cls{
 	cursor: pointer;
-}
-
-
-#mainGraph .PASOK.party,#mainGraph .INDI.party ,#mainGraph .SYRIZA.party ,#mainGraph .ND.party,
-#mainGraph .PASOK text, #mainGraph .INDI text ,#mainGraph .SYRIZA text,#mainGraph .ND text,
-#mainGraph .PASOK circle,#mainGraph .INDI circle,#mainGraph .SYRIZA circle,#mainGraph .ND circle
- {
-	opacity: 1;
-	pointer-events: all;
-}
-
-
-.INDI circle, .ANMP circle{
-	stroke:#000000;
-	stroke-width:0.5px;
 }
