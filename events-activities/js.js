@@ -1,13 +1,14 @@
 
 var margin = {top: 120, right: 100, bottom: 100, left: 100};
-var offset = 150;
+var offset = 30;
 
-var width = $(window).width() -margin.left - margin.right - 30,
-    height =  $(window).height() - 2*margin.top - margin.bottom - 20;
+var width = $(window).width() - margin.left - margin.right - 30,
+    height =  $(window).height() - margin.top - margin.bottom - 20;
 
 var svg;
 var data;
 var data_ext = {};
+var pledges_to_proposals;
 
 var scaleX = d3.scaleLinear().range([0, width])
 var scaleX_size = d3.scaleLog().range([0, width])
@@ -33,7 +34,7 @@ $(document).ready(function(){
 	d3.json("props.json", function(dataIn) {
 	  data = dataIn;
     
-    d3.json("events.json", function(ent) {
+    d3.json("events_instances_tmp.json", function(ent) {
       data_ext['events_data'] = ent;
     
       d3.json("pledges.json", function(pldg) {
@@ -41,14 +42,18 @@ $(document).ready(function(){
           
         d3.json("activities.json", function(act) {
           data_ext['activities'] = act;
+  
+          d3.json("members.json", function(memb) {
+            data_ext['members'] = memb;
 
             // add comments json here once cleaned
 
-          	  //Organise data function
-          	  organiseData();
-          	
-          	  // Visualise Data
-          	  makeVis();
+        	  //Organise data function
+        	  organiseData();
+        	
+        	  // Visualise Data
+        	  makeVis();
+          });
         });
     	});
     });
@@ -57,7 +62,7 @@ $(document).ready(function(){
 
 function organiseData(){
 
-  max = d3.max( data ,function(d){ return ("scheduled" in d ) ? parseDate(d.event_created_at):parseDate(d.proposal_created_at); } )
+  max = d3.max( data ,function(d){ return ("scheduled" in d ) ? parseDate('2017-09-01 12:00:00'):parseDate(d.proposal_created_at); } )
   min = d3.min( data ,function(d){ return ("scheduled" in d ) ? parseDate(d.event_created_at):parseDate(d.proposal_created_at); } )
   scaleX.domain([min,max])
   axis.scale(scaleX).ticks(5).tickFormat( d3.timeFormat("%m-%Y") )
@@ -67,17 +72,22 @@ function organiseData(){
 
   scaleX_size.domain([min_size,max_size]);
   // scaleRadius.domain([min_size,max_size]);
+
+  data_ext['pledges_to_proposals'] = data_ext['pledges'].filter(function(d){ return  !('deleted_at' in d) && ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;})
+  data_ext['events_noOpenTime'] = data_ext['events_data'].filter(function(d){ return d.event_id != 1; })
+  data_ext['activities_onEvents'] = data_ext['activities'].filter(function(d){ return d.item_type == 'Instance' || d.item_type == 'Proposal'; })
+
+  console.log(data_ext['events_noOpenTime'].length)
+
+  console.log(data_ext['events_data'].length)
 }
 
 function makeVis(){
-
-  console.log(data)
 
   svg.append('g').attr('class',"axis")
       .call(axis)
 
   // Check how many 4 month periods we have:
-  // ff_dd = (scaleX.domain()[1] - scaleX.domain()[0])/4
   background = svg.append('g').attr('class',"axis_background");
   current = scaleX.domain()[0];
   tick = 0;
@@ -91,65 +101,94 @@ function makeVis(){
 
       current = d3.timeMonth.offset(current,3)
       tick++;
-  }   
+  }
   
-  props = svg.selectAll('.proposals')
-        .data(data, function(d){  if(!("scheduled" in d) || d['stopped.x'] == 't' ){ return d.id } }).enter()
-        .append('circle').attr('class','proposals')
-        .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
-        .attr('cy', function(d,i){
-          // Fill-in an index array of the top or bottom position of each proposal
-          position_map[d.id+""] = (i%4);
-          return (i%4)*15 + offset;
-         })
-        .attr('r', function(d){ return 2; })
-        .style('fill', function(d){ return 'rgba(0,0,0,0)' ; })
-        .style('stroke-width','1')
-        .style('stroke', '#000');
-
-  evnts = svg.selectAll('.evnts')
-        .data(data_ext['events_data']).enter()
-        .append('circle').attr('class','evnts')
-        .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
-        .attr('cy', function(d,i){ 
-          // For clarity of view find the direction the node should be
-          console.log(position_map[d.proposal_id])
-          if( position_map[d.proposal_id] < 2 ){
-            return (i%4)*15  ; 
-          }else{
-            return (i%4)*15 + 2*offset + 30 ;             
-          }
-          // return (i%5)*15 + 30; 
-        })
-        .attr('r', function(d){ return 2; })
-        .style('fill', function(d){ return '#000'; })
-        .style('stroke-width','1')
-        .style('stroke', '#000');
-
-   pledgesContainer = svg.append('g').attr('class','pledges');
-   pledges_to_proposals = data_ext['pledges'].filter(function(d){ return  !('deleted_at' in d) && ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;})
+  // 1 Proposals at the top
+  propsContainer = svg.append('g').attr('class','proposals')
+  props = propsContainer.selectAll('.proposals')
+          .data(data, function(d){  if(!("scheduled" in d) || d['stopped.x'] == 't' ){ return d.id } }).enter()
+          .append('circle').attr('class','proposals')
+          .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
+          .attr('cy', function(d,i){
+            return (i%4)*15 + offset; // height 4*15 = 60px 
+           })
+          .attr('r', function(d){ return d.recurrence + 1; })
+          .style('fill', function(d){ return 'rgba(0,0,0,0)' ; })
+          .style('stroke-width','1')
+          .style('stroke', '#000');
   
-   pledgesContainer.selectAll('.pledge')
-      .data(pledges_to_proposals, function(d){ return d.id})
+  // 2 pledges
+  pledgesContainer = svg.append('g').attr('class','pledges');
+  pledgesContainer.selectAll('.pledge')
+      .data(data_ext['pledges_to_proposals'], function(d){ return d.id})
         .enter().append('circle')
         .attr('class','pledge')
         // .attr('cx', function(d){ return scaleX_size((d.pledge)); }) 
         .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
         .attr('cy', function(d,i){
-          // Fill-in an index array of the top or bottom position of each proposal
-          if( d.item_type == 'Proposal' && position_map[d.item_id+""] < 2 ){ 
-            return offset - (i%4)*15 - 30 ; 
-           }else{
-            return (i%4)*15 + offset + 90;
-           }
+          return offset + (i%8)*15 + 60 + 20;  // height 8*15 = 120
         })
         .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
-        .style('fill','red')
+        .style('fill','#eeeeee')
 
+  // 3 events
+  eventContainer = svg.append('g').attr('class','events')
+  evnts = eventContainer.selectAll('.evnt')
+        .data(data_ext['events_noOpenTime']).enter()
+        .append('circle').attr('class','evnt')
+        .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
+        .attr('cy', function(d,i){ 
+          return offset + (i%4)*15 + 60 + 120 + 40 ; // height 4*15 = 60 
+        })
+        .attr('r', function(d){ return 2; })
+        .style('fill', function(d){ return 'red'; })
+        .style('stroke-width','1')
+        .style('stroke', 'red');
 
+    // 4 members
+    memberContainer = svg.append('g').attr('class','members')
+    members = memberContainer.selectAll('.member')
+            .data(data_ext['members']).enter()
+            .append('rect').attr('class','member')
+            .attr('x', function(d){ return scaleX(parseDate(d.created_at)); })
+            .attr('y', function(d,i) { 
+              return offset + (i%10)*15 + 60 + 120 + 60 + 60*2; 
+            })
+            .attr('width',3)
+            .attr('height',4);
 
-   pledgesContainer.selectAll('line')
-        .data(pledges_to_proposals).enter().append('line')
+    // 5 activities
+    activitiesContainer = svg.append('g').attr('class','activities');
+    activities = activitiesContainer.selectAll('.activity')
+                  .data(data_ext['activities_onEvents']).enter()
+                  .append('line').attr('class','activity')
+                  .attr('x1', function(d){ 
+
+                    if( d.item_type == 'Instance'){
+                      return evnts.filter(function(v){ return (d.item_id == v.id); }).attr('cx');
+                    }else if(d.item_type == 'Proposal') {
+                      console.log(props.filter(function(v){ return (d.item_id == v.id); }))
+                      return props.filter(function(v){ console.log(v.id==d.item_id);return (d.item_id == v.id); }).attr('cx');
+                    }
+                  })
+                  .attr('y1', function(d){
+                    if( d.item_type == 'Instance'){
+                      return evnts.filter(function(v){ return (d.item_id == v.id); }).attr('cy');
+                    }else if(d.item_type == 'Proposal') {
+                      return props.filter(function(v){ return (d.item_id == v.id); }).attr('cy');
+                    }
+                  })
+                  .attr('x2', function (d) {
+                    return members.filter(function(v){ return (d.user_id == v.id) ; }).attr('cx');
+                  })
+                  .attr('y2', function (d){
+                    return members.filter(function(v){ return (d.user_id == v.id) ; }).attr('cy');
+                  })
+                  .style('stroke','red')
+                             
+
+    pledgesContainer.selectAll('line')
+        .data(data_ext['pledges_to_proposals']).enter().append('line')
         .attr('x1', function (d) {
           var gg = null; 
           if(d.item_type =='Proposal' ){ 
@@ -180,10 +219,6 @@ function makeVis(){
           }
         })
         .style('stroke','rgba(150,150,150,0.02')
-
-
-   activitiesContainer = svg.append('g').attr('class','activities');
- 
   props.on('mouseover', function(){
     var selected = d3.select(this);
     selected.style('fill','red')
@@ -213,7 +248,7 @@ function makeVis(){
       .style('stroke','rgba(150,150,150,0.2' )
   })
   .on('mouseout', function(){
-    evnts.style('fill','rgba(0,0,0,1)')
+    evnts.style('fill','red')
     props.style('fill','rgba(0,0,0,0)')
     d3.select('#attach').style('opacity',0)
     pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
@@ -247,7 +282,7 @@ function makeVis(){
     })
 
   .on('mouseout', function(d){ 
-    evnts.style('fill','rgba(0,0,0,1)')
+    evnts.style('fill','red)')
     props.style('fill','rgba(0,0,0,0)')
     d3.select('#attach').style('opacity',0)
     pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
