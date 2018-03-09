@@ -104,6 +104,8 @@ function makeVis(){
       tick++;
   }
   
+  addLegends();
+
   // 1 Proposals at the top
   propsContainer = svg.append('g').attr('class','proposals')
                               .attr('transform','translate(0,'+ getOffsetY('Proposals') + ')')
@@ -271,74 +273,72 @@ function makeVis(){
   //         }
   //       })
   //       .style('stroke','rgba(150,150,150,0.02')
-  props.on('mouseover', function(){
-    var selected = d3.select(this);
-    selected.style('fill','red')
+  // props.on('mouseover', function(){
+  //   var selected = d3.select(this);
+  //   selected.style('fill','red')
     
-    // Get all connected proposals
-    var hh;
-    if( 'event_id' in selected.datum() ){ 
-      props.filter(function(v){ return ( ('event_id' in v) &&  v['event_id'] == selected.datum()['event_id'] );  })
-        .style('fill', 'red')
-    }
+  //   // Get all connected proposals
+  //   var hh;
+  //   if( 'event_id' in selected.datum() ){ 
+  //     props.filter(function(v){ return ( ('event_id' in v) &&  v['event_id'] == selected.datum()['event_id'] );  })
+  //       .style('fill', 'red')
+  //   }
 
-    // Connect to event
-    var gg = null; 
-    d3.selectAll('.evnts').each(function(v){ if(v['id'] == selected.datum()['event_id']){ gg = this; }; })
-    if (gg){
-    d3.select('#attach')
-      .attr('x1', selected.attr('cx') )
-      .attr('y1',selected.attr('cy'))
-      .attr('x2',d3.select(gg).attr('cx') )
-      .attr('y2', d3.select(gg).attr('cy') )
-      .style('opacity',1)
-    }
+  //   // Connect to event
+  //   var gg = null; 
+  //   d3.selectAll('.evnts').each(function(v){ if(v['id'] == selected.datum()['event_id']){ gg = this; }; })
+  //   if (gg){
+  //   d3.select('#attach')
+  //     .attr('x1', selected.attr('cx') )
+  //     .attr('y1',selected.attr('cy'))
+  //     .attr('x2',d3.select(gg).attr('cx') )
+  //     .attr('y2', d3.select(gg).attr('cy') )
+  //     .style('opacity',1)
+  //   }
 
-    // Connect to pledges
-    var jj;
-    pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Proposal' && v['item_id'] == selected.datum()['id'] ); })
-      .style('stroke','rgba(150,150,150,0.2' )
-  })
-  .on('mouseout', function(){
-    evnts.style('fill','red')
-    props.style('fill','rgba(0,0,0,0)')
-    d3.select('#attach').style('opacity',0)
-    pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
+  //   // Connect to pledges
+  //   var jj;
+  //   pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Proposal' && v['item_id'] == selected.datum()['id'] ); })
+  //     .style('stroke','rgba(150,150,150,0.2' )
+  // })
+  // .on('mouseout', function(){
+  //   evnts.style('fill','red')
+  //   props.style('fill','rgba(0,0,0,0)')
+  //   d3.select('#attach').style('opacity',0)
+  //   pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
 
-  })
+  // })
 
-  evnts.on('mouseover', function(){
-    var selected = d3.select(this);
-    selected.style('fill','red')
+  // evnts.on('mouseover', function(){
+  //   var selected = d3.select(this);
+  //   selected.style('fill','red')
     
-    // Connect to event
-    var gg = null; 
-    props.each(function(v){ if(v['event_id'] == selected.datum()['id']){ gg = this; }; })
-    if (gg){
-    d3.select('#attach')
-      .attr('x1', selected.attr('cx') )
-      .attr('y1',selected.attr('cy'))
-      .attr('x2',d3.select(gg).attr('cx') )
-      .attr('y2', d3.select(gg).attr('cy') )
-      .style('opacity',1);
-    }
+  //   // Connect to event
+  //   var gg = null; 
+  //   props.each(function(v){ if(v['event_id'] == selected.datum()['id']){ gg = this; }; })
+  //   if (gg){
+  //   d3.select('#attach')
+  //     .attr('x1', selected.attr('cx') )
+  //     .attr('y1',selected.attr('cy'))
+  //     .attr('x2',d3.select(gg).attr('cx') )
+  //     .attr('y2', d3.select(gg).attr('cy') )
+  //     .style('opacity',1);
+  //   }
 
-    // Connect to pledges
-    var jj;
-    pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Event' && v['item_id'] == selected.datum()['id'] ); })
-      .style('stroke','rgba(150,150,150,0.2' )
+  //   // Connect to pledges
+  //   var jj;
+  //   pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Event' && v['item_id'] == selected.datum()['id'] ); })
+  //     .style('stroke','rgba(150,150,150,0.2' )
 
-    pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Proposal' && v['item_id'] == selected.datum()['proposal_id'] ); })
-      .style('stroke','rgba(150,150,150,0.2' )
-  
-    })
-
-  .on('mouseout', function(d){ 
-    evnts.style('fill','red)')
-    props.style('fill','rgba(0,0,0,0)')
-    d3.select('#attach').style('opacity',0)
-    pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
-  })
+  //   pledgesContainer.selectAll('line').filter(function(v){ return ( v['item_type']=='Proposal' && v['item_id'] == selected.datum()['proposal_id'] ); })
+  //     .style('stroke','rgba(150,150,150,0.2' )
+  // })
+  // .on('mouseout', function(d){ 
+  //   evnts.style('fill','red)')
+  //   props.style('fill','rgba(0,0,0,0)')
+  //   d3.select('#attach').style('opacity',0)
+  //   pledgesContainer.selectAll('line').style('stroke','rgba(150,150,150,0.01' )
+  // })
 
 
   d3.selectAll('.proposals').moveToFront()
@@ -349,8 +349,46 @@ function makeVis(){
 }
 
 
+function addLegends(){
+
+  types = [
+    {  type: 'attended',
+      color: 'purple'
+    }, {
+      type: 'pledged_to',
+      color: 'red'
+    }, {
+      type: 'proposed',
+      color: 'orange'
+    }, {
+      type: 'edited',
+      color: 'orange'
+    }, {
+      type: 'commented_on',
+      color: 'yellow'
+    }
+  ]
+
+  box_type = svg.append('g').attr('class','legend')
+      .selectAll('.lineTypes').data(types).enter()
+      .append('g')
+      .attr('transform', function(d,i){ return 'translate('+(100*i)+','+ (-margin.top + 20) +')' })
+      
+  box_type.append('rect')
+      .attr('x',0).attr('y',-10)
+      .attr('width', 10)
+      .attr('height',10)
+      .style('fill', function(d){ return d.color; })
+    
+  box_type.append('text')
+      .attr('x',15).attr('y',0)
+      .text(function(d){ return d.type; })
+      
+
+}
+
 function getColorCoding(type){
-  if(type == 'attended' ){ return 'blue';}
+  if(type == 'attended' ){ return 'purple';}
   else if( type == 'pledged_to'){ return 'red' }
   else if( type == 'proposed' || type == 'edited') { return 'orange' }
   else if( type == 'commented_on'){ return 'yellow'}
