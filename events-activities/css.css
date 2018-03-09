@@ -14,10 +14,26 @@ svg{
 	stroke: #f3f3f3;
 }
 
+line.activity{
+  stroke-width:0.2px;
+ /*stroke: #f3f3f3;*/
+}
+
+line.activity.anonymous{
+ stroke-width:0.2px;
+ /*visibility: hidden;;*/
+ stroke: blue;
+}
+
+
 .axis--x path {
   display: none;
 }
 
+.labels{
+ font-size: 10px;
+ font-weight: 600
+}
 
 .axis path.domain{
 	stroke: #d3d3d3 !important;

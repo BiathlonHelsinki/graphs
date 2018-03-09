@@ -1,6 +1,7 @@
 
 var margin = {top: 120, right: 100, bottom: 100, left: 100};
 var offset = 30;
+var padding = 30;
 
 var width = $(window).width() - margin.left - margin.right - 30,
     height =  $(window).height() - margin.top - margin.bottom - 20;
@@ -73,12 +74,12 @@ function organiseData(){
   scaleX_size.domain([min_size,max_size]);
   // scaleRadius.domain([min_size,max_size]);
 
-  data_ext['pledges_to_proposals'] = data_ext['pledges'].filter(function(d){ return  !('deleted_at' in d) && ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;})
+  data_ext['pledges_to_proposals'] = data_ext['pledges'].filter(function(d){ return  ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;}) // !('deleted_at' in d) &&
   data_ext['events_noOpenTime'] = data_ext['events_data'].filter(function(d){ return d.event_id != 1; })
-  data_ext['activities_onEvents'] = data_ext['activities'].filter(function(d){ return d.item_type == 'Instance' || d.item_type == 'Proposal'; })
+  data_ext['activities_onEvents'] = data_ext['activities'].filter(function(d){ return d.item_type == 'Instance' || d.item_type == 'Proposal' || d.item_type == 'Pledge' ; })
+  // data_ext['members_noAnonym'] = data_ext['members'].filter(function(d){ return ( d.user_id != 0); });
 
   console.log(data_ext['events_noOpenTime'].length)
-
   console.log(data_ext['events_data'].length)
 }
 
@@ -105,57 +106,85 @@ function makeVis(){
   
   // 1 Proposals at the top
   propsContainer = svg.append('g').attr('class','proposals')
+                              .attr('transform','translate(0,'+ getOffsetY('Proposals') + ')')
   props = propsContainer.selectAll('.proposals')
           .data(data, function(d){  if(!("scheduled" in d) || d['stopped.x'] == 't' ){ return d.id } }).enter()
           .append('circle').attr('class','proposals')
           .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
           .attr('cy', function(d,i){
-            return (i%4)*15 + offset; // height 4*15 = 60px 
+            return (i%4)*15; // height 4*15 = 60px 
            })
-          .attr('r', function(d){ return d.recurrence + 1; })
+          .attr('r', function(d){ return (d.recurrence ? d.recurrence: 1) + 1; })
           .style('fill', function(d){ return 'rgba(0,0,0,0)' ; })
           .style('stroke-width','1')
           .style('stroke', '#000');
   
+  propsContainer.append('text')
+                .text('PROPOSALS')
+                .attr('x',-margin.left)
+                .attr('class','labels')
+
   // 2 pledges
-  pledgesContainer = svg.append('g').attr('class','pledges');
-  pledgesContainer.selectAll('.pledge')
+  pledgesContainer = svg.append('g').attr('class','pledges')
+                        .attr('transform','translate(0,'+ getOffsetY('Pledges') +')')
+
+  pledges = pledgesContainer.selectAll('.pledge')
       .data(data_ext['pledges_to_proposals'], function(d){ return d.id})
         .enter().append('circle')
         .attr('class','pledge')
         // .attr('cx', function(d){ return scaleX_size((d.pledge)); }) 
         .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
         .attr('cy', function(d,i){
-          return offset + (i%8)*15 + 60 + 20;  // height 8*15 = 120
+          return (i%8)*15;  // height 8*15 = 120
         })
         .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
-        .style('fill','#eeeeee')
+        .style('fill','red')
+  
+  pledgesContainer.append('text')
+              .text('PLEDGES')
+              .attr('x', -margin.left)
+              .attr('class','labels')
 
   // 3 events
   eventContainer = svg.append('g').attr('class','events')
+                    .attr('transform','translate(0,'+ getOffsetY('Events') +')')
+
   evnts = eventContainer.selectAll('.evnt')
-        .data(data_ext['events_noOpenTime']).enter()
+        .data(data_ext['events_data']).enter()
         .append('circle').attr('class','evnt')
         .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
         .attr('cy', function(d,i){ 
-          return offset + (i%4)*15 + 60 + 120 + 40 ; // height 4*15 = 60 
+          return (i%4)*15; // height 4*15 = 60 
         })
         .attr('r', function(d){ return 2; })
-        .style('fill', function(d){ return 'red'; })
+        .style('fill', function(d){ return '#000'; })
         .style('stroke-width','1')
-        .style('stroke', 'red');
+        .style('stroke', '#000');
+
+  eventContainer.append('text')
+            .text('EVENTS')
+            .attr('x', -margin.left)
+            .attr('class','labels')
 
     // 4 members
     memberContainer = svg.append('g').attr('class','members')
+                      .attr('transform','translate(0,'+ getOffsetY('Members') +')')
+
     members = memberContainer.selectAll('.member')
             .data(data_ext['members']).enter()
             .append('rect').attr('class','member')
             .attr('x', function(d){ return scaleX(parseDate(d.created_at)); })
             .attr('y', function(d,i) { 
-              return offset + (i%10)*15 + 60 + 120 + 60 + 60*2; 
+              return  (i%10)*15; 
             })
             .attr('width',3)
             .attr('height',4);
+    
+    memberContainer.append('text')
+        .text('MEMBERS')
+        .attr('x',-margin.left)
+        .attr('class','labels')
+
 
     // 5 activities
     activitiesContainer = svg.append('g').attr('class','activities');
@@ -163,62 +192,85 @@ function makeVis(){
                   .data(data_ext['activities_onEvents']).enter()
                   .append('line').attr('class','activity')
                   .attr('x1', function(d){ 
-
                     if( d.item_type == 'Instance'){
-                      return evnts.filter(function(v){ return (d.item_id == v.id); }).attr('cx');
+                      ee = evnts.filter(function(v){ return (d.item_id == v.id); })
+                      return ee.attr('cx');
                     }else if(d.item_type == 'Proposal') {
-                      console.log(props.filter(function(v){ return (d.item_id == v.id); }))
-                      return props.filter(function(v){ console.log(v.id==d.item_id);return (d.item_id == v.id); }).attr('cx');
+                      return props.filter(function(v){ return (d.item_id == v.id); }).attr('cx');
+                    }else if(d.item_type == 'Pledge'){
+                      ee = pledges.filter(function(v){ return (d.item_id == v.id); });
+                      return ee.attr('cx');                      
                     }
                   })
                   .attr('y1', function(d){
                     if( d.item_type == 'Instance'){
-                      return evnts.filter(function(v){ return (d.item_id == v.id); }).attr('cy');
+                      ee = evnts.filter(function(v){ return (d.item_id == v.id); });
+                      return  parseFloat(ee.attr('cy')) +  + getOffsetY('Events');
                     }else if(d.item_type == 'Proposal') {
-                      return props.filter(function(v){ return (d.item_id == v.id); }).attr('cy');
+                      ee = props.filter(function(v){ return (d.item_id == v.id); });
+                      return parseFloat(ee.attr('cy')) + getOffsetY('Proposals');
+                    }else if(d.item_type == 'Pledge'){
+                      ee = pledges.filter(function(v){ return (d.item_id == v.id); });                      
+                      return parseFloat(ee.attr('cy')) + getOffsetY('Pledges');
                     }
                   })
                   .attr('x2', function (d) {
-                    return members.filter(function(v){ return (d.user_id == v.id) ; }).attr('cx');
+                     if( d.user_id !=0){
+                      ee = members.filter(function(v){ return (d.user_id == v.id) ; })
+                     return ee.attr('x');
+                    }else{ 
+                      return d3.select(this).attr('x1');
+                    }
                   })
                   .attr('y2', function (d){
-                    return members.filter(function(v){ return (d.user_id == v.id) ; }).attr('cy');
+                    if( d.user_id !=0){
+                      ee = members.filter(function(v){ return (d.user_id == v.id) ; });
+                      return  parseFloat(ee.attr('y')) + getOffsetY('Members')
+                    }
+                    else{ 
+                      console.log('USER 0'); 
+                      return (11)*15 + getOffsetY('Members');
+                    }
                   })
-                  .style('stroke','red')
+                  .classed('anonymous', function(d){ (d.user_id == 0); })
+                  .style('stroke', function(d){
+                    return getColorCoding(d.description);
+                  })
                              
 
-    pledgesContainer.selectAll('line')
-        .data(data_ext['pledges_to_proposals']).enter().append('line')
-        .attr('x1', function (d) {
-          var gg = null; 
-          if(d.item_type =='Proposal' ){ 
-            props.each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
-          }else{ 
-            evnts.each( function(v,o){ if(v['id'] === d.item_id) { gg = this; return; } });
-          } 
-          if(gg == null) { console.log(d.item_id + ' ' + d.item_type)}
-          return d3.select(gg).attr('cx');    
-        })
-        .attr('y1', function (d) {
-          var gg = null; 
-          if(d.item_type =='Proposal' ){ 
-            d3.selectAll('.proposals').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
-          }
-          else{ 
-            d3.selectAll('.evnts').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
-          }
-          return d3.select(gg).attr('cy');
-        })
-        .attr('x2',function(d){ return scaleX( parseDate(d.created_at) ); }) 
-        // .attr('x2',function(d){ return scaleX_size(d.pledge); }) 
-        .attr('y2', function(d,i){ 
-          if( position_map[d.item_id] < 2 ){
-            return offset - (i%4)*15 - 30 ; 
-          }else{
-            return (i%4)*15 + offset + 90;
-          }
-        })
-        .style('stroke','rgba(150,150,150,0.02')
+
+  // pledgesContainer.selectAll('line')
+  //       .data(data_ext['pledges_to_proposals']).enter().append('line')
+  //       .attr('x1', function (d) {
+  //         var gg = null; 
+  //         if(d.item_type =='Proposal' ){ 
+  //           props.each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
+  //         }else{ 
+  //           evnts.each( function(v,o){ if(v['id'] === d.item_id) { gg = this; return; } });
+  //         } 
+  //         // if(gg == null) { console.log(d.item_id + ' ' + d.item_type)}
+  //         return d3.select(gg).attr('cx');    
+  //       })
+  //       .attr('y1', function (d) {
+  //         var gg = null; 
+  //         if(d.item_type =='Proposal' ){ 
+  //           d3.selectAll('.proposals').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
+  //         }
+  //         else{ 
+  //           d3.selectAll('.evnts').each( function(v,o){  if(v['id'] === d.item_id) { gg = this; return; } });
+  //         }
+  //         return d3.select(gg).attr('cy');
+  //       })
+  //       .attr('x2',function(d){ return scaleX( parseDate(d.created_at) ); }) 
+  //       // .attr('x2',function(d){ return scaleX_size(d.pledge); }) 
+  //       .attr('y2', function(d,i){ 
+  //         if( position_map[d.item_id] < 2 ){
+  //           return offset - (i%4)*15 - 30 ; 
+  //         }else{
+  //           return (i%4)*15 + offset + 90;
+  //         }
+  //       })
+  //       .style('stroke','rgba(150,150,150,0.02')
   props.on('mouseover', function(){
     var selected = d3.select(this);
     selected.style('fill','red')
@@ -290,8 +342,48 @@ function makeVis(){
 
 
   d3.selectAll('.proposals').moveToFront()
+  d3.selectAll('.events').moveToFront()
+  d3.selectAll('.members').moveToFront()
   d3.selectAll('.evnts').moveToFront()
 
+}
+
+
+function getColorCoding(type){
+  if(type == 'attended' ){ return 'blue';}
+  else if( type == 'pledged_to'){ return 'red' }
+  else if( type == 'proposed' || type == 'edited') { return 'orange' }
+  else if( type == 'commented_on'){ return 'yellow'}
+}
+
+
+
+function getOffsetY(type){
+
+  ret = 0 ;
+  switch(type){
+    case 'Proposals':{
+      ret = offset;
+      break;
+    };
+    case 'Pledges':{
+      ret = (offset + 4*15 + padding );
+      break;
+    };
+    case 'Events':{
+      ret = (offset + 4*15 + 8*15 + padding*2 ) ;
+      break;
+    };
+    case 'Members':{
+      ret = (offset*5 + 4*15 + 8*15 + 4*15 + padding*3);
+      break;
+    }
+    default: {
+      ret = 0;
+    }
+  }
+
+  return ret;
 }
 
 // http://bl.ocks.org/mbostock/7555321
