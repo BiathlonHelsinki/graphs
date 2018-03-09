@@ -16,6 +16,7 @@ svg{
 
 line.activity{
   stroke-width:0.2px;
+  opacity: 0.3;
  /*stroke: #f3f3f3;*/
 }
 

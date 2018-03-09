@@ -98,7 +98,7 @@ function makeVis(){
       .attr('y',0)
       .attr('width', scaleX(current) -  scaleX(d3.timeMonth.offset(current,-3)) )
       .attr('height', height)
-      .style('fill', function(d){ return (tick%2 == 0) ? '#fafafa':'#fff'; })
+      .style('fill', function(d){ return (tick%2 == 0) ? '#f8f8f8':'#fff'; })
 
       current = d3.timeMonth.offset(current,3)
       tick++;
@@ -219,7 +219,7 @@ function makeVis(){
                   .attr('x2', function (d) {
                      if( d.user_id !=0){
                       ee = members.filter(function(v){ return (d.user_id == v.id) ; })
-                     return ee.attr('x');
+                     return parseFloat(ee.attr('x')) + 1.5;
                     }else{ 
                       return d3.select(this).attr('x1');
                     }
