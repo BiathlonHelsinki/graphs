@@ -240,7 +240,7 @@ function change(){
       data_extH = filter_data(date);
       redraw(data_extH);
 
-      if ( date > parseDate('2017-08-19 00:00:17') ) ff.stop();
+      if ( date > parseDate('2017-01-19 00:00:17') ) ff.stop();
     }, 260)
     animating = true;
   }else{
