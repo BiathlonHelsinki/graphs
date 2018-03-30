@@ -94,9 +94,6 @@ $(document).ready(function(){
 });
 
 
-
-
-
 function organiseData(data_extHIN){
 
   max = d3.max( data_extHIN['t_events_data'] ,function(d){ return parseDate(d.start_at); } )
@@ -110,8 +107,6 @@ function organiseData(data_extHIN){
   min_size = d3.min( data_extHIN['t_pledges_to_proposals'] ,function(d){ return !("deleted_at" in d ) ? d.pledge:10; } )  
   scaleX_size.domain([min_size,max_size]);
 }
-
-
 
 function startVisualisation(){
   
@@ -241,7 +236,7 @@ function change(){
       redraw(data_extH);
 
       if ( date > parseDate('2017-01-19 00:00:17') ) ff.stop();
-    }, 260)
+    }, 160)
     animating = true;
   }else{
 
@@ -250,7 +245,6 @@ function change(){
     datePaused = date;
     animating = false;
   }
-
 }
 
 function changeBackgroundByDay(date){
@@ -351,7 +345,7 @@ function redraw(data_extUpd) {
           })
         .merge(memberUpd)
           .attr('x', function(d){ return scaleX(parseDate(d.created_at)); })
-          .transition(t)
+          // .transition(t)
           .attr('width',3)
           .attr('height',4)
 
@@ -371,7 +365,7 @@ function redraw(data_extUpd) {
         })
       .merge(pledgesUpd)
         .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
-      .transition(t)
+      // .transition(t)
         .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
 
 
@@ -391,7 +385,7 @@ function redraw(data_extUpd) {
            })
         .merge(propsUpd)
           .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
-        .transition(t)
+        // .transition(t)
           .attr('r', function(d){ return (d.recurrence ? d.recurrence: 1) + 1; })
 
   propsUpd.exit().remove();
@@ -410,7 +404,7 @@ function redraw(data_extUpd) {
           })
         .merge(evntsUpd)
          .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
-        .transition(t)
+        // .transition(t)
         .attr('r', function(d){ return 2; })
 
   evnts = eventContainer.selectAll('.evnt')
@@ -423,8 +417,7 @@ function redraw(data_extUpd) {
                       .data(data_extUpd['t_activities_onEvents'], function(d){ return d.id; })
 
     activitiesUpd.exit()
-          .style('opacity',1)
-          .transition()
+          // .transition()
           .style('opacity',0)
         .remove();
 
@@ -477,7 +470,7 @@ function redraw(data_extUpd) {
                       return parseFloat(ee.attr('cy')) + getOffsetY('Pledges');
                     }
                   })
-  },200)
+  },30)
 
 }
 
