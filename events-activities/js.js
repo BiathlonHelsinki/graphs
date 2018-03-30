@@ -220,7 +220,7 @@ function change(){
   if( animating == false){
    
     date = datePaused;
-    formatTime = d3.timeFormat("%A %d/%m %H:00");
+    formatTime = d3.timeFormat("%A %d/%m");
 
     if( d3.timeHour() > 8  && d3.timeHour(date) < 18 ){
     }
@@ -240,8 +240,8 @@ function change(){
       data_extH = filter_data(date);
       redraw(data_extH);
 
-      if ( date > parseDate('2016-12-19 00:00:17') ) ff.stop();
-    }, 300)
+      if ( date > parseDate('2017-08-19 00:00:17') ) ff.stop();
+    }, 260)
     animating = true;
   }else{
 
