@@ -13,6 +13,7 @@ var pledges_to_proposals;
 var timer;
 
 var is_daytime = true; 
+var animating = false;
 
 var scaleX = d3.scaleLinear().range([0, width])
 var scaleX_size = d3.scaleLog().range([0, width])
@@ -47,11 +48,12 @@ var types = [
   ];
 
 var t = d3.transition()
-    // .duration(10)
+    .duration(100)
     .ease(d3.easeLinear);
 
 // 2016-10-19 08:42:17
 var parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+var datePaused = parseDate('2016-09-19 00:00:17');
 
 
 $(document).ready(function(){
@@ -76,14 +78,11 @@ $(document).ready(function(){
         d3.json("activities.json", function(act) {
           data_ext['activities'] = act;
   
-          d3.json("members.json", function(memb) {
+          d3.json("members_annym.json", function(memb) {
             data_ext['members'] = memb;
 
             // add comments json here once cleaned
 
-        	  //Organise data function
-        	  organiseData();
-        	
         	  // Visualise Data
         	  startVisualisation();
             // makeVis();
@@ -98,52 +97,53 @@ $(document).ready(function(){
 
 
 
-function organiseData(){
+function organiseData(data_extHIN){
 
-  max = d3.max( data_ext['proposals'] ,function(d){ return ("scheduled" in d ) ? parseDate('2017-09-01 12:00:00'):parseDate(d.proposal_created_at); } )
-  min = d3.min(  data_ext['proposals'] ,function(d){ return ("scheduled" in d ) ? parseDate(d.event_created_at):parseDate(d.proposal_created_at); } )
+  max = d3.max( data_extHIN['t_events_data'] ,function(d){ return parseDate(d.start_at); } )
+  min = parseDate('2016-08-30 00:00:17')
   scaleX.domain([min,max])
 
   scaleTime.domain([min,max]).range([0,6000])
   axis.scale(scaleX).ticks(5).tickFormat( d3.timeFormat("%m-%Y") )
 
-  max_size = d3.max( data_ext['pledges'] ,function(d){ return !("deleted_at" in d ) ? d.pledge:10; } )  
-  min_size = d3.min( data_ext['pledges'] ,function(d){ return !("deleted_at" in d ) ? d.pledge:10; } )  
+  max_size = d3.max( data_extHIN['t_pledges_to_proposals'] ,function(d){ return !("deleted_at" in d ) ? d.pledge:10; } )  
+  min_size = d3.min( data_extHIN['t_pledges_to_proposals'] ,function(d){ return !("deleted_at" in d ) ? d.pledge:10; } )  
   scaleX_size.domain([min_size,max_size]);
-
-  data_ext['pledges_to_proposals'] = data_ext['pledges'].filter(function(d){ return  ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;}) // !('deleted_at' in d) &&
-  data_ext['events_noOpenTime'] = data_ext['events_data'].filter(function(d){ return d.event_id != 1; })
-  data_ext['activities_onEvents'] = data_ext['activities'].filter(function(d){ return d.item_type == 'Instance' || d.item_type == 'Proposal' || d.item_type == 'Pledge' ; })
-
-
-  // Interaction weight
-  
-
 }
 
 
 
 function startVisualisation(){
   
-  initialise();
   fullData();
   // update();
 
-  date = parseDate('2016-10-19 00:00:17');
+  date = parseDate('2016-09-20 00:00:17');
+  data_extH = {}
   data_extH = filter_data(date);
+ 
+  //Organise data function
+  organiseData(data_extH);
+  initialise();
+
+
   redraw(data_extH);
 
   // transfer to canvas
   // add events
-
 }
 
 function fullData(){
+  data_ext['pledges_to_proposals'] = data_ext['pledges'].filter(function(d){ return  ( d.item_type == 'Proposal' || d.item_type =='Event' )  ;}) // !('deleted_at' in d) &&
+  data_ext['events_noOpenTime'] = data_ext['events_data'].filter(function(d){ return d.event_id != 1; })
+  data_ext['activities_onEvents'] = data_ext['activities'].filter(function(d){ return d.item_type == 'Instance' || d.item_type == 'Proposal' || d.item_type == 'Pledge' ; })
+
   data_ext['t_proposals'] = data_ext['proposals']
   data_ext['t_pledges_to_proposals'] = data_ext['pledges_to_proposals']
   data_ext['t_events_data'] = data_ext['events_data']
   data_ext['t_members'] = data_ext['members']
   data_ext['t_activities_onEvents'] = data_ext['activities_onEvents'];
+
 }
 
 function initialise(){
@@ -216,42 +216,54 @@ function initialise(){
 }
 
 function change(){
-  date = parseDate('2016-10-19 00:00:17');
-  formatTime = d3.timeFormat("%A %d/%m %H:00");
 
-  if( d3.timeHour() > 8  && d3.timeHour(date) < 18 ){
+  if( animating == false){
+   
+    date = datePaused;
+    formatTime = d3.timeFormat("%A %d/%m %H:00");
+
+    if( d3.timeHour() > 8  && d3.timeHour(date) < 18 ){
+    }
+
+    ff = d3.interval( function(elapsed) {
+
+      date = d3.timeHour.offset(date, 6)
+      d3.select('#hour').html(formatTime(date))
+      d3.select('button').html('Pause Animation')
+
+      // not needed time marker
+      // d3.select('#timeLineMarker').transition().attr('x1', scaleX(date)).attr('x2', scaleX(date))
+
+      // terrible backgorund idea
+      // changeBackgroundByDay(date)
+
+      data_extH = filter_data(date);
+      redraw(data_extH);
+
+      if ( date > parseDate('2016-12-19 00:00:17') ) ff.stop();
+    }, 300)
+    animating = true;
+  }else{
+
+    d3.select('button').html('Continue Animation')
+    ff.stop();
+    datePaused = date;
+    animating = false;
   }
 
-  ff = d3.interval( function(elapsed) {
-
-    date = d3.timeHour.offset(date, 1)
-    d3.select('#hour').html(formatTime(date))
-
-    // d3.select('#timeLineMarker').transition().attr('x1', scaleX(date)).attr('x2', scaleX(date))
-
-    // terrible backgorund idea
-    // changeBackgroundByDay(date)
-
-    data_extH = filter_data(date);
-    redraw(data_extH);
-
-    if (elapsed > 140000 || date > parseDate('2016-12-19 00:00:17') ) ff.stop();
-  }, 300)
-
 }
-
 
 function changeBackgroundByDay(date){
       if( is_daytime==true && (date.getHours() > 22 || date.getHours() < 8) ){
       switchBackground(true)
       console.log('day '+ date.getHours())
       is_daytime = false;
-    }else if(is_daytime==false && (date.getHours() > 8 && date.getHours() < 22 ) ){
+     }else if(is_daytime==false && (date.getHours() > 8 && date.getHours() < 22 ) ){
       console.log('to day')
       switchBackground(false)
       console.log('day '+ date.getHours())
       is_daytime = true;
-    }
+     }
 }
 
 function switchBackground(set){
@@ -302,7 +314,7 @@ function filter_data(date){
 function redraw(data_extUpd) {
   // find new scale
   orgScale = scaleX.domain()[0];
-  max = d3.max( data_extUpd['t_proposals'] ,function(d){ return parseDate(d.proposal_created_at); } )
+  max = d3.max( data_extUpd['t_events_data'] ,function(d){ return parseDate(d.start_at); } )
   scaleX.domain([orgScale,max])
 
   scaleTime.domain([min,max]).range([0,6000])
@@ -330,18 +342,19 @@ function redraw(data_extUpd) {
   // First Add new members
   memberUpd = memberContainer.selectAll('.member')
                       .data(data_extUpd['t_members'], function(d){ return d.id;})
-  memberUpd.transition(t)
+  // memberUpd.transition(t)
   memberUpd.enter()
           .append('rect')
           .attr('class','member')
-          .attr('width',3)
-          .attr('height',4)
           .attr('y', function(d,i) { 
             return  (i%10)*15; 
           })
         .merge(memberUpd)
-          .transition(t)
           .attr('x', function(d){ return scaleX(parseDate(d.created_at)); })
+          .transition(t)
+          .attr('width',3)
+          .attr('height',4)
+
   memberUpd.exit().remove();
   member = memberContainer.selectAll('.member')
 
@@ -349,26 +362,27 @@ function redraw(data_extUpd) {
   pledgesUpd = pledgesContainer.selectAll('.pledge')
                 .data(data_extUpd['t_pledges_to_proposals'], function(d){ return d.id; })
   
-  pledgesUpd.transition(t)
+  // pledgesUpd.transition(t)
   pledgesUpd.enter().append('circle')
         .attr('class','pledge')
-        .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
         .style('fill','red')
         .attr('cy', function(d,i){
           return (i%8)*15;  // height 8*15 = 120
         })
       .merge(pledgesUpd)
-      .transition(t)
         .attr('cx', function(d){ return scaleX(parseDate(d.created_at) ); }) 
+      .transition(t)
+        .attr('r', function(d){ return ((d.pledge)/20 < 1) ? 1:(d.pledge)/20; })
+
+
   pledgesUpd.exit().remove();
   pledges = pledgesContainer.selectAll('.pledge')
 
   propsUpd = propsContainer.selectAll('.proposals')
                 .data(data_extUpd['t_proposals'], function(d){  return d.id })
-  propsUpd.transition(t)
+  // propsUpd.transition(t)
   propsUpd.enter().append('circle')
           .attr('class','proposals')
-          .attr('r', function(d){ return (d.recurrence ? d.recurrence: 1) + 1; })
           .style('fill', function(d){ return 'rgba(0,0,0,0)' ; })
           .style('stroke-width','1')
           .style('stroke', '#000')
@@ -376,17 +390,18 @@ function redraw(data_extUpd) {
             return (i%4)*15; // height 4*15 = 60px 
            })
         .merge(propsUpd)
-        .transition(t)
           .attr('cx', function(d){ return  scaleX(parseDate(d.proposal_created_at)) ; })
+        .transition(t)
+          .attr('r', function(d){ return (d.recurrence ? d.recurrence: 1) + 1; })
+
   propsUpd.exit().remove();
   props = propsContainer.selectAll('.proposals');
 
   evntsUpd = eventContainer.selectAll('.evnt')
                .data(data_extUpd['t_events_data'],function(d){ return d.id; })
-  evntsUpd.transition(t)
+  // evntsUpd.transition(t)
   evntsUpd.enter().append('circle')
           .attr('class','evnt')
-          .attr('r', function(d){ return 2; })
           .style('fill', function(d){ return '#000'; })
           .style('stroke-width','1')
           .style('stroke', '#000')
@@ -394,8 +409,10 @@ function redraw(data_extUpd) {
            return (i%4)*15; // height 4*15 = 60 
           })
         .merge(evntsUpd)
-        .transition(t)
          .attr('cx', function(d){ return ( ('start_at' in d) ? scaleX(parseDate(d.start_at)):scaleX(parseDate(d.created_at)) ) ; })
+        .transition(t)
+        .attr('r', function(d){ return 2; })
+
   evnts = eventContainer.selectAll('.evnt')
   evntsUpd.exit().remove();
 
@@ -460,7 +477,7 @@ function redraw(data_extUpd) {
                       return parseFloat(ee.attr('cy')) + getOffsetY('Pledges');
                     }
                   })
-  },1)
+  },200)
 
 }
 
